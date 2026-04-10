@@ -1,0 +1,38 @@
+# ============================================================
+# Claw Personal / NanoClaw — .gitignore
+# ============================================================
+
+# Hemmeligheter — ALDRI commit disse!
+.env
+.env.local
+.env.production
+
+# OS-filer
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js (for fremtidig Orkestrator)
+node_modules/
+npm-debug.log*
+
+# Python (for fremtidig NanoClaw)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/

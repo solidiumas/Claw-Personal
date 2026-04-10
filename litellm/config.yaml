@@ -1,0 +1,59 @@
+# ============================================================
+# LiteLLM Proxy Configuration — Claw Personal / NanoClaw
+# ============================================================
+# Dokumentasjon: https://docs.litellm.ai/docs/proxy/configs
+#
+# Denne konfigurasjonen maskerer Anthropic API-nøkkelen (Master Key)
+# og gjør den utilgjengelig for individuelle NanoClaw-containere.
+# Brukercontainere autentiserer seg med Virtual Keys som opprettes
+# via LiteLLM sitt admin-API (se scripts/create-virtual-key.sh).
+# ============================================================
+
+model_list:
+  # -----------------------------------------------------------
+  # Claude Sonnet — primærmodell for NanoClaw
+  # NanoClaw-containere refererer til denne som "claude-sonnet"
+  # -----------------------------------------------------------
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # -----------------------------------------------------------
+  # Claude Haiku — raskere og billigere alternativ
+  # Brukes til enklere oppgaver og høyvolum-scenarioer
+  # -----------------------------------------------------------
+  - model_name: claude-haiku
+    litellm_params:
+      model: anthropic/claude-3-5-haiku-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # -----------------------------------------------------------
+  # Fremtidig: Gemini Flash — kan legges til uten kodeendringer
+  # i NanoClaw. Fjern kommentarene for å aktivere.
+  # -----------------------------------------------------------
+  # - model_name: gemini-flash
+  #   litellm_params:
+  #     model: gemini/gemini-2.0-flash
+  #     api_key: os.environ/GOOGLE_API_KEY
+
+general_settings:
+  # Master key — brukes til å opprette og administrere Virtual Keys.
+  # Kun orkestratoren (backend) skal ha tilgang til denne.
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+  # Budget-innstillinger (global)
+  max_budget: 100          # Maks total budget i USD (juster etter behov)
+  budget_duration: 30d     # Budget-periode
+
+litellm_settings:
+  # Logging — sett til true for detaljert debugging
+  set_verbose: false
+
+  # Dropp ukjente parametere i stedet for å feile
+  # (nyttig når NanoClaw sender Claude-spesifikke parametere)
+  drop_params: true
+
+  # Retry-innstillinger
+  num_retries: 3
+  request_timeout: 120

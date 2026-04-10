@@ -1,0 +1,60 @@
+version: "3.9"
+
+# ============================================================
+# Claw Personal / NanoClaw — Fase 1: Infrastruktur
+# ============================================================
+# Denne filen setter opp LiteLLM som en intern proxy-container.
+# Brukercontainere (NanoClaw) kobles til det lukkede nettverket
+# "claw-internal" og sender alle LLM-forespørsler gjennom
+# LiteLLM-proxyen i stedet for direkte til Anthropic.
+#
+# Bruk:
+#   1. Kopier .env.example til .env og fyll inn verdier
+#   2. Kjør: docker compose up -d
+#   3. Verifiser: curl http://localhost:4000/health
+# ============================================================
+
+services:
+  litellm-proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm-proxy
+    restart: unless-stopped
+    ports:
+      # Eksponeres KUN på localhost for admin/debugging under utvikling.
+      # I produksjon: fjern denne porten eller bruk en reverse proxy (nginx/caddy).
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    command:
+      - "--config"
+      - "/app/config.yaml"
+      - "--port"
+      - "4000"
+    networks:
+      - claw-internal
+      - claw-external
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  # Lukket internt nettverk — ingen direkte internett-tilgang.
+  # NanoClaw-brukercontainere kobles KUN til dette nettverket.
+  # De kan snakke med litellm-proxy:4000, men ikke med internett.
+  claw-internal:
+    name: claw-internal
+    driver: bridge
+    internal: true
+
+  # Eksternt nettverk — gir LiteLLM-proxyen internett-tilgang
+  # slik at den kan videresende forespørsler til Anthropic API.
+  # Brukercontainere skal ALDRI kobles til dette nettverket.
+  claw-external:
+    name: claw-external
+    driver: bridge
