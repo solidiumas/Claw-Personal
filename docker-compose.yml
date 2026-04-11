@@ -1,9 +1,12 @@
 version: "3.9"
 
 # ============================================================
-# Claw Personal / NanoClaw — Fase 1: Infrastruktur
+# Claw Personal / NanoClaw — Fase 1 + 2: Infrastruktur & Orkestrator
 # ============================================================
-# Denne filen setter opp LiteLLM som en intern proxy-container.
+# Denne filen setter opp:
+#   1. LiteLLM som en intern proxy-container (Fase 1)
+#   2. Orkestratoren som håndterer onboarding og container-livssyklus (Fase 2)
+#
 # Brukercontainere (NanoClaw) kobles til det lukkede nettverket
 # "claw-internal" og sender alle LLM-forespørsler gjennom
 # LiteLLM-proxyen i stedet for direkte til Anthropic.
@@ -11,10 +14,14 @@ version: "3.9"
 # Bruk:
 #   1. Kopier .env.example til .env og fyll inn verdier
 #   2. Kjør: docker compose up -d
-#   3. Verifiser: curl http://localhost:4000/health
+#   3. Verifiser LiteLLM:     curl http://localhost:4000/health
+#   4. Verifiser Orkestrator:  curl http://localhost:3000/health
 # ============================================================
 
 services:
+  # -----------------------------------------------------------
+  # Fase 1: LiteLLM Proxy — Oversettelseslag for LLM-forespørsler
+  # -----------------------------------------------------------
   litellm-proxy:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm-proxy
@@ -42,6 +49,44 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # -----------------------------------------------------------
+  # Fase 2: Orkestrator — Backend for "Zero Delay" onboarding
+  # -----------------------------------------------------------
+  # Orkestratoren er hjertet i Control Plane. Den:
+  #   - Mottar webhooks fra betalingsleverandører
+  #   - Genererer interne tokens for brukerautentisering
+  #   - Oppretter Virtual Keys via LiteLLM
+  #   - Spinner opp isolerte NanoClaw-containere per bruker
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: claw-orchestrator
+    restart: unless-stopped
+    ports:
+      # Eksponeres for å motta webhooks fra betalingsleverandører.
+      # I produksjon: bruk en reverse proxy (nginx/caddy) foran.
+      - "127.0.0.1:${ORCHESTRATOR_PORT:-3000}:3000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - LITELLM_INTERNAL_URL=http://litellm-proxy:4000
+      - ORCHESTRATOR_PORT=3000
+      - NANOCLAW_IMAGE=${NANOCLAW_IMAGE:-nanoclaw-base:latest}
+      - DOCKER_NETWORK=claw-internal
+    volumes:
+      # Docker socket — gir Orkestratoren tilgang til å styre containere.
+      # VIKTIG: Dette gir full Docker-kontroll. Sikres i produksjon.
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      # Orkestratoren trenger begge nettverk:
+      #   - claw-internal: for å kommunisere med LiteLLM-proxyen
+      #   - claw-external: for å motta webhooks fra internett
+      - claw-internal
+      - claw-external
+    depends_on:
+      litellm-proxy:
+        condition: service_healthy
 
 networks:
   # Lukket internt nettverk — ingen direkte internett-tilgang.
