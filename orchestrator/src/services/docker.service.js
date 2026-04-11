@@ -109,6 +109,89 @@ class DockerService {
       // Container finnes ikke — alt OK
     }
   }
+
+  // ---------------------------------------------------------
+  // Wake-signal (Fase 3: Magic Connect)
+  // ---------------------------------------------------------
+
+  /**
+   * Sender et wake-signal til en brukers NanoClaw-container
+   * for å informere om at OAuth-tokens er klare i The Vault.
+   *
+   * Etter at brukeren har fullført OAuth-flyten og tokenene er
+   * kryptert i Vault, kaller Orkestratoren denne metoden for å
+   * «vekke» containeren: "Du har fått tilgang. Start
+   * initialiserings-protokoll."
+   *
+   * Containeren kan da:
+   *   1. Gjøre et internt API-kall til Orkestratoren for å
+   *      hente (dekrypterte) tokens
+   *   2. Koble seg til Gmail, Calendar og YouTube
+   *   3. Starte sin første analyse-runde
+   *
+   * Teknisk gjennomføring: Vi bruker Docker exec for å sende
+   * et signal til containeren. Alternativt kan vi bruke et
+   * internt HTTP-kall eller en meldingskø (Redis pub/sub).
+   *
+   * PRODUKSJON: Vurder å bruke Redis pub/sub eller en intern
+   * webhook for mer robust signalering, f.eks.:
+   *   POST http://claw-user-{userId}:8080/wake
+   *
+   * @param {string} userId - Bruker-ID
+   * @returns {Promise<object>} - { containerId, containerName, signalSent }
+   * @throws {Error} Hvis containeren ikke finnes eller er stoppet
+   */
+  async wakeContainer(userId) {
+    const containerName = `claw-user-${userId}`;
+
+    console.log(`[Docker] Sender wake-signal til container: ${containerName}`);
+
+    try {
+      const container = this._docker.getContainer(containerName);
+      const inspectData = await container.inspect();
+
+      // Sjekk at containeren kjører
+      if (inspectData.State.Status !== 'running') {
+        throw new Error(
+          `Container '${containerName}' er ikke i kjørende tilstand ` +
+          `(status: ${inspectData.State.Status})`
+        );
+      }
+
+      // Kjør et wake-kommando inne i containeren.
+      // Dette sender et signal til NanoClaw-motoren om at den
+      // skal starte initialiserings-protokollen.
+      //
+      // NanoClaw-containeren forventes å ha et skript eller en
+      // prosess som lytter på dette signalet, f.eks.:
+      //   - En fil /tmp/wake.signal som overvåkes
+      //   - En intern HTTP-server på port 8080
+      //   - En Redis pub/sub listener
+      //
+      // For MVP bruker vi en enkel tilnærming: skriv en fil
+      // som NanoClaw-motoren overvåker.
+      const exec = await container.exec({
+        Cmd: ['sh', '-c', 'echo "OAUTH_TOKENS_READY" > /tmp/wake.signal'],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+
+      await exec.start({ Detach: false });
+
+      console.log(`[Docker] Wake-signal sendt til container: ${containerName}`);
+      console.log(`[Docker]   Signal: OAUTH_TOKENS_READY → /tmp/wake.signal`);
+
+      return {
+        containerId: inspectData.Id,
+        containerName,
+        signalSent: true,
+      };
+
+    } catch (err) {
+      console.error(`[Docker] Kunne ikke sende wake-signal til '${containerName}': ${err.message}`);
+      throw err;
+    }
+  }
 }
 
 module.exports = new DockerService();

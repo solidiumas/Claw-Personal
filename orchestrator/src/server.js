@@ -5,18 +5,16 @@
 //
 // Denne Express-serveren gjør følgende:
 //
+//   Fase 2 (Orkestrator):
 //   1. Har et endepunkt (POST /webhook/payment) for å ta imot
 //      en bekreftelse på at en bruker har betalt.
+//   2. Spinner opp isolerte NanoClaw-containere per bruker.
+//   3. Genererer interne tokens og Virtual Keys.
 //
-//   2. Når betalingen er bekreftet, bruker den Dockerode-
-//      biblioteket til å umiddelbart spinne opp en ny Docker-
-//      container (nanoclaw-base:latest) for brukeren.
-//      Containeren kalles claw-user-{userId}.
-//
-//   3. Orkestratoren genererer en tilfeldig intern streng
-//      ('Intern Token'), injiserer den som miljøvariabel
-//      i den nye containeren, og lagrer koblingen mellom
-//      brukerID og token sikkert.
+//   Fase 3 (Magic Connect):
+//   4. OAuth 2.0 mot Google for Gmail, Calendar og YouTube.
+//   5. Krypterer tokens i «The Vault» (Zero-Knowledge).
+//   6. Sender wake-signal til brukerens NanoClaw-container.
 //
 // Bruk:
 //   NODE_ENV=development node src/server.js
@@ -26,8 +24,10 @@
 // ============================================================
 
 const express = require('express');
+const session = require('express-session');
 const config = require('./config');
 const webhookRoutes = require('./routes/webhook.routes');
+const authRoutes = require('./routes/auth.routes');
 
 // -----------------------------------------------------------
 // Opprett Express-app
@@ -39,6 +39,26 @@ const app = express();
 // -----------------------------------------------------------
 // Parse JSON request bodies
 app.use(express.json());
+
+// Session middleware (Fase 3) — kreves for OAuth CSRF-beskyttelse.
+// Sesjonen lagrer state-parameter og userId under OAuth-flyten.
+//
+// PRODUKSJON: Bytt ut MemoryStore med Redis eller PostgreSQL
+// for horisontal skalering:
+//   const RedisStore = require('connect-redis').default;
+//   store: new RedisStore({ client: redisClient })
+app.use(session({
+  secret: config.session.secret,
+  resave: false,
+  saveUninitialized: false,
+  name: 'claw.sid',
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',  // HTTPS i prod
+    httpOnly: true,                                  // Utilgjengelig for JS
+    maxAge: 10 * 60 * 1000,                         // 10 minutter
+    sameSite: 'lax',                                 // CSRF-beskyttelse
+  },
+}));
 
 // Enkel request-logging
 app.use((req, _res, next) => {
@@ -59,8 +79,11 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Webhook-ruter
+// Webhook-ruter (Fase 2)
 app.use('/webhook', webhookRoutes);
+
+// OAuth / Magic Connect-ruter (Fase 3)
+app.use('/auth', authRoutes);
 
 // -----------------------------------------------------------
 // 404 handler
@@ -97,7 +120,14 @@ app.listen(PORT, HOST, () => {
   console.log('============================================================');
   console.log(` Server kjører på http://${HOST}:${PORT}`);
   console.log(` Helse-sjekk:     http://${HOST}:${PORT}/health`);
-  console.log(` Webhook:         POST http://${HOST}:${PORT}/webhook/payment`);
+  console.log('');
+  console.log(' Fase 2 — Webhooks:');
+  console.log(`   POST http://${HOST}:${PORT}/webhook/payment`);
+  console.log('');
+  console.log(' Fase 3 — Magic Connect (OAuth):');
+  console.log(`   GET  http://${HOST}:${PORT}/auth/google?userId=xxx`);
+  console.log(`   GET  http://${HOST}:${PORT}/auth/google/callback`);
+  console.log(`   GET  http://${HOST}:${PORT}/auth/status/:userId`);
   console.log('============================================================');
   console.log('');
 });

@@ -74,6 +74,13 @@ services:
       - ORCHESTRATOR_PORT=3000
       - NANOCLAW_IMAGE=${NANOCLAW_IMAGE:-nanoclaw-base:latest}
       - DOCKER_NETWORK=claw-internal
+      # Fase 3: Google OAuth (Magic Connect)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      # Fase 3: Session & Vault
+      - SESSION_SECRET=${SESSION_SECRET}
+      - VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
     volumes:
       # Docker socket — gir Orkestratoren tilgang til å styre containere.
       # VIKTIG: Dette gir full Docker-kontroll. Sikres i produksjon.
