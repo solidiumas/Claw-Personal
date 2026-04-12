@@ -16,6 +16,10 @@
 //   5. Krypterer tokens i «The Vault» (Zero-Knowledge).
 //   6. Sender wake-signal til brukerens NanoClaw-container.
 //
+//   Fase 4 (Database):
+//   7. PostgreSQL for persistent lagring av brukere og tokens.
+//   8. Automatisk schema-migrasjon ved oppstart.
+//
 // Bruk:
 //   NODE_ENV=development node src/server.js
 //
@@ -26,6 +30,8 @@
 const express = require('express');
 const session = require('express-session');
 const config = require('./config');
+const db = require('./db/pool');
+const migrate = require('./db/migrate');
 const webhookRoutes = require('./routes/webhook.routes');
 const authRoutes = require('./routes/auth.routes');
 
@@ -70,11 +76,20 @@ app.use((req, _res, next) => {
 // Ruter
 // -----------------------------------------------------------
 
-// Helse-endepunkt
-app.get('/health', (_req, res) => {
+// Helse-endepunkt (inkluderer DB-status)
+app.get('/health', async (_req, res) => {
+  let dbStatus = 'unknown';
+  try {
+    await db.query('SELECT 1');
+    dbStatus = 'connected';
+  } catch {
+    dbStatus = 'disconnected';
+  }
+
   res.status(200).json({
     status: 'ok',
     service: 'claw-orchestrator',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
   });
 });
@@ -108,26 +123,56 @@ app.use((err, _req, res, _next) => {
 });
 
 // -----------------------------------------------------------
-// Start serveren
+// Start serveren (Fase 4: DB-initialisering før oppstart)
 // -----------------------------------------------------------
 const PORT = config.server.port;
 const HOST = config.server.host;
 
-app.listen(PORT, HOST, () => {
-  console.log('');
-  console.log('============================================================');
-  console.log(' Claw Personal — Orkestrator');
-  console.log('============================================================');
-  console.log(` Server kjører på http://${HOST}:${PORT}`);
-  console.log(` Helse-sjekk:     http://${HOST}:${PORT}/health`);
-  console.log('');
-  console.log(' Fase 2 — Webhooks:');
-  console.log(`   POST http://${HOST}:${PORT}/webhook/payment`);
-  console.log('');
-  console.log(' Fase 3 — Magic Connect (OAuth):');
-  console.log(`   GET  http://${HOST}:${PORT}/auth/google?userId=xxx`);
-  console.log(`   GET  http://${HOST}:${PORT}/auth/google/callback`);
-  console.log(`   GET  http://${HOST}:${PORT}/auth/status/:userId`);
-  console.log('============================================================');
-  console.log('');
+async function start() {
+  try {
+    // 1. Test databasetilkobling
+    await db.testConnection();
+
+    // 2. Kjør schema-migrasjon (idempotent)
+    await migrate();
+
+    // 3. Start Express-serveren
+    app.listen(PORT, HOST, () => {
+      console.log('');
+      console.log('============================================================');
+      console.log(' Claw Personal — Orkestrator (v0.2.0)');
+      console.log('============================================================');
+      console.log(` Server kjører på http://${HOST}:${PORT}`);
+      console.log(` Helse-sjekk:     http://${HOST}:${PORT}/health`);
+      console.log(` Database:        ✅ PostgreSQL tilkoblet`);
+      console.log('');
+      console.log(' Fase 2 — Webhooks:');
+      console.log(`   POST http://${HOST}:${PORT}/webhook/payment`);
+      console.log('');
+      console.log(' Fase 3 — Magic Connect (OAuth):');
+      console.log(`   GET  http://${HOST}:${PORT}/auth/google?userId=xxx`);
+      console.log(`   GET  http://${HOST}:${PORT}/auth/google/callback`);
+      console.log(`   GET  http://${HOST}:${PORT}/auth/status/:userId`);
+      console.log('============================================================');
+      console.log('');
+    });
+  } catch (err) {
+    console.error('[Server] Kunne ikke starte:', err.message);
+    process.exit(1);
+  }
+}
+
+// Graceful shutdown — lukk DB-tilkoblinger
+process.on('SIGTERM', async () => {
+  console.log('[Server] SIGTERM mottatt. Lukker tilkoblinger...');
+  await db.close();
+  process.exit(0);
 });
+
+process.on('SIGINT', async () => {
+  console.log('[Server] SIGINT mottatt. Lukker tilkoblinger...');
+  await db.close();
+  process.exit(0);
+});
+
+start();

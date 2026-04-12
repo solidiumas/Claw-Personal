@@ -6,6 +6,7 @@
 //
 // Fase 1: Server, Docker, LiteLLM
 // Fase 3: Google OAuth, Vault (Zero-Knowledge), Session
+// Fase 4: Database (PostgreSQL)
 // ============================================================
 
 const crypto = require('crypto');
@@ -99,6 +100,19 @@ const config = {
   // -----------------------------------------------------------
   session: {
     secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+  },
+
+  // -----------------------------------------------------------
+  // Database — PostgreSQL (Fase 4)
+  // -----------------------------------------------------------
+  // Tilkoblingsstreng konfigureres via DATABASE_URL.
+  // Internt i Docker-nettverket brukes 'db' som vertsnavn.
+  // -----------------------------------------------------------
+  database: {
+    connectionString: process.env.DATABASE_URL || 'postgresql://claw_admin:claw_secret@db:5432/claw_db',
+    maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS, 10) || 20,
+    idleTimeoutMs: parseInt(process.env.DB_IDLE_TIMEOUT_MS, 10) || 30000,
+    connectionTimeoutMs: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS, 10) || 5000,
   },
 };
 

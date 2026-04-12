@@ -81,19 +81,44 @@ services:
       # Fase 3: Session & Vault
       - SESSION_SECRET=${SESSION_SECRET}
       - VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
+      # Fase 4: Database
+      - DATABASE_URL=${DATABASE_URL}
     volumes:
       # Docker socket — gir Orkestratoren tilgang til å styre containere.
       # VIKTIG: Dette gir full Docker-kontroll. Sikres i produksjon.
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       # Orkestratoren trenger begge nettverk:
-      #   - claw-internal: for å kommunisere med LiteLLM-proxyen
+      #   - claw-internal: for å kommunisere med LiteLLM-proxyen og databasen
       #   - claw-external: for å motta webhooks fra internett
       - claw-internal
       - claw-external
     depends_on:
       litellm-proxy:
         condition: service_healthy
+      db:
+        condition: service_healthy
+
+  # -----------------------------------------------------------
+  # Fase 4: Database — PostgreSQL for sikker lagring
+  # -----------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: claw-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-claw_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-claw_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-claw_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - claw-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-claw_admin} -d ${POSTGRES_DB:-claw_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   # Lukket internt nettverk — ingen direkte internett-tilgang.
@@ -110,3 +135,9 @@ networks:
   claw-external:
     name: claw-external
     driver: bridge
+
+volumes:
+  # Persistent lagring for PostgreSQL-databasen
+  postgres_data:
+    name: claw-postgres-data
+

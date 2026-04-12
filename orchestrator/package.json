@@ -1,11 +1,12 @@
 {
   "name": "claw-orchestrator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sentral orkestrator for Claw Personal — håndterer onboarding, betaling og container-livssyklus",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/db/migrate.js"
   },
   "keywords": ["claw", "orchestrator", "nanoclaw"],
   "license": "UNLICENSED",
@@ -16,6 +17,7 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "googleapis": "^146.0.0",
+    "pg": "^8.13.1",
     "uuid": "^11.1.0"
   }
 }

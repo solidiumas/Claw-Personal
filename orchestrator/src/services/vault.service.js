@@ -1,5 +1,5 @@
 // ============================================================
-// Claw Personal — The Vault (Zero-Knowledge Kryptering)
+// Claw Personal — The Vault (Fase 4: PostgreSQL)
 // ============================================================
 // Sikker lagring av bruker-sensitive data (OAuth-tokens etc.)
 // ved hjelp av Zero-Knowledge-kryptering.
@@ -15,15 +15,13 @@
 //   4. Databasen lagrer kun { iv, authTag, ciphertext } —
 //      alt er "gibberish" uten den avledede nøkkelen.
 //
-// PRODUKSJONSNOTER:
-//   - Erstatt in-memory Map med PostgreSQL / Redis
-//   - Vurder HashiCorp Vault for enterprise-grade KMS
-//   - Roter VAULT_MASTER_KEY med en migrasjonsstrategi
-//   - Legg til audit-logging for alle dekrypteringsoperasjoner
+// Fase 3: In-memory Map (prototype)
+// Fase 4: Migrert til PostgreSQL (persistent lagring)
 // ============================================================
 
 const crypto = require('crypto');
 const config = require('../config');
+const db = require('../db/pool');
 
 // Konstanter for krypteringsalgoritmen
 const ALGORITHM = 'aes-256-gcm';
@@ -36,18 +34,6 @@ const SCRYPT_PARALLEL = 1;   // p
 
 class VaultService {
   constructor() {
-    // -------------------------------------------------------
-    // In-memory lagring av krypterte tokens per bruker.
-    //
-    // PRODUKSJON: Erstatt denne Map-en med en persistent
-    // database (PostgreSQL med kryptert kolonne, Redis med
-    // disk-persistens, eller en dedikert KMS-tjeneste).
-    //
-    // Strukturen er:
-    //   userId → { iv, authTag, ciphertext, createdAt, updatedAt }
-    // -------------------------------------------------------
-    this._store = new Map();
-
     // Master Key lastes fra miljøvariabel
     this._masterKey = config.vault.masterKey;
 
@@ -150,7 +136,7 @@ class VaultService {
   }
 
   // ---------------------------------------------------------
-  // Token-lagring (OAuth tokens)
+  // Token-lagring (OAuth tokens) — PostgreSQL
   // ---------------------------------------------------------
 
   /**
@@ -163,61 +149,59 @@ class VaultService {
    *   - scope:         Godkjente scopes fra brukeren
    *   - token_type:    Vanligvis "Bearer"
    *
-   * PRODUKSJON: Denne metoden bør skrive til PostgreSQL i stedet
-   * for den in-memory Map-en. Eksempel SQL:
+   * Bruker UPSERT (ON CONFLICT) slik at re-autorisering
+   * overskriver eksisterende tokens for brukeren.
    *
-   *   INSERT INTO user_tokens (user_id, iv, auth_tag, ciphertext, updated_at)
-   *   VALUES ($1, $2, $3, $4, NOW())
-   *   ON CONFLICT (user_id) DO UPDATE SET ...
-   *
-   * @param {string} userId - Bruker-ID
+   * @param {string} userId - Bruker-ID (UUID)
    * @param {object} tokens - OAuth token-sett fra Google
    */
-  storeUserTokens(userId, tokens) {
+  async storeUserTokens(userId, tokens) {
     const plaintext = JSON.stringify(tokens);
     const encrypted = this.encrypt(userId, plaintext);
 
-    this._store.set(userId, {
-      ...encrypted,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    await db.query(
+      `INSERT INTO user_tokens (user_id, iv, auth_tag, ciphertext)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id)
+       DO UPDATE SET
+         iv         = $2,
+         auth_tag   = $3,
+         ciphertext = $4,
+         updated_at = NOW()`,
+      [userId, encrypted.iv, encrypted.authTag, encrypted.ciphertext]
+    );
 
     console.log(`[Vault] OAuth-tokens kryptert og lagret for bruker: ${userId}`);
     console.log(`[Vault]   Ciphertext lengde: ${encrypted.ciphertext.length} tegn`);
     console.log(`[Vault]   Algoritme: ${ALGORITHM}`);
-
-    // PRODUKSJON: Legg til audit-logging her
-    // auditLog.write({ action: 'STORE_TOKENS', userId, timestamp: Date.now() });
+    console.log(`[Vault]   Lagret i: PostgreSQL (user_tokens)`);
   }
 
   /**
    * Henter og dekrypterer OAuth-tokens for en bruker.
    *
-   * PRODUKSJON: Denne metoden bør lese fra PostgreSQL:
-   *
-   *   SELECT iv, auth_tag, ciphertext FROM user_tokens
-   *   WHERE user_id = $1
-   *
-   * @param {string} userId - Bruker-ID
-   * @returns {object|null} - Dekryptert token-sett eller null
+   * @param {string} userId - Bruker-ID (UUID)
+   * @returns {Promise<object|null>} - Dekryptert token-sett eller null
    */
-  getUserTokens(userId) {
-    const encrypted = this._store.get(userId);
+  async getUserTokens(userId) {
+    const result = await db.query(
+      `SELECT iv, auth_tag AS "authTag", ciphertext
+       FROM user_tokens
+       WHERE user_id = $1`,
+      [userId]
+    );
 
-    if (!encrypted) {
+    if (result.rows.length === 0) {
       console.log(`[Vault] Ingen tokens funnet for bruker: ${userId}`);
       return null;
     }
 
     try {
+      const encrypted = result.rows[0];
       const plaintext = this.decrypt(userId, encrypted);
       const tokens = JSON.parse(plaintext);
 
       console.log(`[Vault] Tokens dekryptert for bruker: ${userId}`);
-      // PRODUKSJON: Legg til audit-logging her
-      // auditLog.write({ action: 'RETRIEVE_TOKENS', userId, timestamp: Date.now() });
-
       return tokens;
     } catch (err) {
       console.error(`[Vault] Dekryptering feilet for bruker ${userId}: ${err.message}`);
@@ -228,25 +212,34 @@ class VaultService {
   /**
    * Sjekker om en bruker har lagrede tokens i Vault.
    *
-   * @param {string} userId - Bruker-ID
-   * @returns {boolean}     - true hvis tokens finnes
+   * @param {string} userId - Bruker-ID (UUID)
+   * @returns {Promise<boolean>} - true hvis tokens finnes
    */
-  hasTokens(userId) {
-    return this._store.has(userId);
+  async hasTokens(userId) {
+    const result = await db.query(
+      `SELECT EXISTS(
+        SELECT 1 FROM user_tokens WHERE user_id = $1
+      ) AS "exists"`,
+      [userId]
+    );
+    return result.rows[0].exists;
   }
 
   /**
    * Fjerner alle lagrede tokens for en bruker.
    * Brukes ved avslutning av abonnement eller tilbaketrekking av samtykke.
    *
-   * @param {string} userId - Bruker-ID
-   * @returns {boolean}     - true hvis tokens ble fjernet
+   * @param {string} userId - Bruker-ID (UUID)
+   * @returns {Promise<boolean>} - true hvis tokens ble fjernet
    */
-  revokeTokens(userId) {
-    const deleted = this._store.delete(userId);
+  async revokeTokens(userId) {
+    const result = await db.query(
+      `DELETE FROM user_tokens WHERE user_id = $1`,
+      [userId]
+    );
+    const deleted = result.rowCount > 0;
     if (deleted) {
       console.log(`[Vault] Tokens slettet for bruker: ${userId}`);
-      // PRODUKSJON: Legg til audit-logging
     }
     return deleted;
   }

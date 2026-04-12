@@ -1,5 +1,5 @@
 // ============================================================
-// Claw Personal — Auth Routes (Magic Connect)
+// Claw Personal — Auth Routes (Magic Connect) (Fase 4: PostgreSQL)
 // ============================================================
 // OAuth 2.0 ruter for «Magic Connect»-onboarding.
 //
@@ -19,10 +19,14 @@
 //   - CSRF-beskyttelse via state-parameter i sesjon
 //   - Tokens krypteres med Zero-Knowledge i The Vault
 //   - Etter lagring sendes wake-signal til NanoClaw-containeren
+//
+// Fase 3: Grunnleggende OAuth-flyt
+// Fase 4: Brukerprofil lagres i PostgreSQL (users-tabellen)
 // ============================================================
 
 const express = require('express');
 const crypto = require('crypto');
+const db = require('../db/pool');
 const googleAuthService = require('../services/google-auth.service');
 const vaultService = require('../services/vault.service');
 const dockerService = require('../services/docker.service');
@@ -88,9 +92,10 @@ router.get('/google', (req, res) => {
 //   1. Verifiserer state-parameteren (CSRF-sjekk)
 //   2. Veksler autorisasjonkoden til access/refresh tokens
 //   3. Henter brukerens Google-profil
-//   4. Krypterer og lagrer tokens i The Vault
-//   5. Sender wake-signal til brukerens NanoClaw-container
-//   6. Redirecter til suksess-side (eller returnerer JSON)
+//   4. Oppdaterer brukerprofil i PostgreSQL (users-tabellen)
+//   5. Krypterer og lagrer tokens i The Vault (PostgreSQL)
+//   6. Sender wake-signal til brukerens NanoClaw-container
+//   7. Redirecter til suksess-side (eller returnerer JSON)
 // -----------------------------------------------------------
 router.get('/google/callback', async (req, res) => {
   try {
@@ -158,7 +163,23 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // -----------------------------------------------------------
-    // 4. Krypter og lagre tokens i The Vault
+    // 4. Oppdater brukerprofil i PostgreSQL
+    //    Lagrer Google-profilinfo (email, navn, google_id)
+    // -----------------------------------------------------------
+    if (profile) {
+      await db.query(
+        `UPDATE users
+         SET email = COALESCE($2, email),
+             name = COALESCE($3, name),
+             google_id = COALESCE($4, google_id)
+         WHERE id = $1`,
+        [userId, profile.email, profile.name, profile.id]
+      );
+      console.log(`[Auth] Brukerprofil oppdatert i DB for: ${userId}`);
+    }
+
+    // -----------------------------------------------------------
+    // 5. Krypter og lagre tokens i The Vault (PostgreSQL)
     //    (Zero-Knowledge: kun Orkestratoren kan dekryptere)
     // -----------------------------------------------------------
     const tokenPayload = {
@@ -175,14 +196,14 @@ router.get('/google/callback', async (req, res) => {
       } : null,
     };
 
-    vaultService.storeUserTokens(userId, tokenPayload);
+    await vaultService.storeUserTokens(userId, tokenPayload);
 
     // Rydd opp sesjonen
     delete req.session.oauthState;
     delete req.session.oauthUserId;
 
     // -----------------------------------------------------------
-    // 5. Send wake-signal til brukerens NanoClaw-container
+    // 6. Send wake-signal til brukerens NanoClaw-container
     //    "Du har fått tilgang. Start initialiserings-protokoll."
     // -----------------------------------------------------------
     let wakeResult = null;
@@ -199,12 +220,13 @@ router.get('/google/callback', async (req, res) => {
     console.log(`${'='.repeat(60)}`);
     console.log(`[Auth] ✅ OAuth fullført for bruker: ${userId}`);
     console.log(`[Auth]   E-post:    ${profile?.email || 'Ukjent'}`);
-    console.log(`[Auth]   Tokens:    Kryptert i Vault`);
+    console.log(`[Auth]   Tokens:    Kryptert i Vault (PostgreSQL)`);
+    console.log(`[Auth]   Profil:    Lagret i DB (users)`);
     console.log(`[Auth]   Container: ${wakeResult ? 'Vekket' : 'Venter'}`);
     console.log(`${'='.repeat(60)}\n`);
 
     // -----------------------------------------------------------
-    // 6. Returner suksess
+    // 7. Returner suksess
     //
     // PRODUKSJON: Redirect til frontend suksess-side:
     //   const frontendUrl = process.env.FRONTEND_SUCCESS_URL || 'http://localhost:3001/onboarding/success';
@@ -238,7 +260,7 @@ router.get('/google/callback', async (req, res) => {
 // tokens i The Vault. Returnerer kun en boolean, ALDRI
 // selve tokenene — dette er Zero-Knowledge-prinsippet.
 // -----------------------------------------------------------
-router.get('/status/:userId', (req, res) => {
+router.get('/status/:userId', async (req, res) => {
   const { userId } = req.params;
 
   if (!userId) {
@@ -248,7 +270,7 @@ router.get('/status/:userId', (req, res) => {
     });
   }
 
-  const hasTokens = vaultService.hasTokens(userId);
+  const hasTokens = await vaultService.hasTokens(userId);
 
   return res.status(200).json({
     success: true,
