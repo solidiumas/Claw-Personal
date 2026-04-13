@@ -9,7 +9,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install
 
 # --- Build stage ---
 FROM node:22-alpine AS builder
