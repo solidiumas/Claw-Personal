@@ -226,22 +226,13 @@ router.get('/google/callback', async (req, res) => {
     console.log(`${'='.repeat(60)}\n`);
 
     // -----------------------------------------------------------
-    // 7. Returner suksess
-    //
-    // PRODUKSJON: Redirect til frontend suksess-side:
-    //   const frontendUrl = process.env.FRONTEND_SUCCESS_URL || 'http://localhost:3001/onboarding/success';
-    //   return res.redirect(`${frontendUrl}?userId=${userId}`);
+    // 7. Redirect til frontend (Fase 6)
+    //    Brukeren sendes tilbake til Magic Connect-siden med
+    //    userId og oauth=done som query-parametere, slik at
+    //    frontenden kan starte status-polling.
     // -----------------------------------------------------------
-    return res.status(200).json({
-      success: true,
-      message: 'Magic Connect fullført! Din NanoClaw-agent er nå aktiv.',
-      userId,
-      profile: profile ? {
-        email: profile.email,
-        name: profile.name,
-      } : null,
-      containerAwake: !!wakeResult,
-    });
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    return res.redirect(`${frontendUrl}/magic-connect?userId=${userId}&oauth=done`);
 
   } catch (err) {
     console.error(`[Auth] Feil i OAuth callback: ${err.message}`);

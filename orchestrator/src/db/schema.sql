@@ -1,11 +1,12 @@
 -- ============================================================
--- Claw Personal — Database Schema (Fase 4)
+-- Claw Personal — Database Schema (Fase 4 + 5)
 -- ============================================================
--- Databaseskjema for Orkestratoren. Inneholder tre tabeller:
+-- Databaseskjema for Orkestratoren. Inneholder fire tabeller:
 --
---   1. users           — Brukerprofil, lisensstatus og container-info
---   2. user_tokens     — Krypterte OAuth-tokens (The Vault)
---   3. internal_tokens — Interne autentiseringstokens
+--   1. users             — Brukerprofil, lisensstatus og container-info
+--   2. user_tokens       — Krypterte OAuth-tokens (The Vault)
+--   3. internal_tokens   — Interne autentiseringstokens
+--   4. processed_events  — Idempotency for Stripe webhooks (Fase 5)
 --
 -- Alle CREATE-setninger bruker IF NOT EXISTS for idempotens.
 -- Trygt å kjøre flere ganger uten å miste data.
@@ -27,20 +28,32 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --   'revoked'  — manuelt deaktivert
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email            VARCHAR(255) UNIQUE,
-  name             VARCHAR(255),
-  google_id        VARCHAR(255) UNIQUE,
-  license_status   VARCHAR(20)  NOT NULL DEFAULT 'pending'
-                   CHECK (license_status IN ('pending', 'active', 'expired', 'revoked')),
-  container_id     VARCHAR(128),
-  container_name   VARCHAR(128),
-  created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email                    VARCHAR(255) UNIQUE,
+  name                     VARCHAR(255),
+  google_id                VARCHAR(255) UNIQUE,
+  license_status           VARCHAR(20)  NOT NULL DEFAULT 'pending'
+                           CHECK (license_status IN ('pending', 'active', 'expired', 'revoked')),
+  -- Fase 5: Stripe-kobling
+  stripe_customer_id       VARCHAR(64),
+  stripe_subscription_id   VARCHAR(64),
+  -- Container-info
+  container_id             VARCHAR(128),
+  container_name           VARCHAR(128),
+  created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Indeks for rask oppslag på lisensstatus
+-- Indekser for rask oppslag
 CREATE INDEX IF NOT EXISTS idx_users_license_status ON users (license_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer ON users (stripe_customer_id)
+  WHERE stripe_customer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_subscription ON users (stripe_subscription_id)
+  WHERE stripe_subscription_id IS NOT NULL;
+
+-- Legg til Stripe-kolonner om de mangler (for eksisterende databaser)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id     VARCHAR(64);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(64);
 
 -- -----------------------------------------------------------
 -- 2. Krypterte OAuth-tokens (The Vault)
@@ -49,7 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_users_license_status ON users (license_status);
 -- Zero-Knowledge: kolonnene iv, auth_tag og ciphertext er
 -- verdiløse uten VAULT_MASTER_KEY som holdes i minnet.
 --
--- Én rad per bruker (1:1 med users-tabellen).
+-- En rad per bruker (1:1 med users-tabellen).
 -- Ved re-autorisering oppdateres raden med UPSERT.
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS user_tokens (
@@ -68,7 +81,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 -- injiseres i NanoClaw-containeren. Brukes for sikker
 -- kommunikasjon mellom container og Orkestrator.
 --
--- Én rad per bruker (1:1 med users-tabellen).
+-- En rad per bruker (1:1 med users-tabellen).
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS internal_tokens (
   user_id      UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -78,6 +91,22 @@ CREATE TABLE IF NOT EXISTS internal_tokens (
 
 -- Indeks for oppslag på token-verdi (container → Orkestrator)
 CREATE INDEX IF NOT EXISTS idx_internal_tokens_token ON internal_tokens (token);
+
+-- -----------------------------------------------------------
+-- 4. Prosesserte Stripe-events (Idempotency) — Fase 5
+-- -----------------------------------------------------------
+-- Stripe kan sende samme webhook-event flere ganger ved
+-- nettverksfeil eller retries. Denne tabellen sikrer at
+-- hvert event kun behandles en gang.
+--
+-- Hvert event lagres med sin unike Stripe event.id.
+-- Eventtypen og tidspunktet lagres for audit-logging.
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS processed_events (
+  stripe_event_id   VARCHAR(128) PRIMARY KEY,
+  event_type        VARCHAR(64)  NOT NULL,
+  processed_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
 
 -- -----------------------------------------------------------
 -- Trigger: Automatisk oppdatering av updated_at

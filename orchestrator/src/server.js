@@ -20,6 +20,14 @@
 //   7. PostgreSQL for persistent lagring av brukere og tokens.
 //   8. Automatisk schema-migrasjon ved oppstart.
 //
+//   Fase 5 (Stripe):
+//   9. Stripe Checkout Session for betaling.
+//  10. Signaturverifisert webhook med Zero-Delay provisjonering.
+//
+//   Fase 6 (Frontend):
+//  11. CORS for cross-origin API-kall fra Next.js frontend.
+//  12. OAuth-callback redirect til frontend etter autentisering.
+//
 // Bruk:
 //   NODE_ENV=development node src/server.js
 //
@@ -34,6 +42,8 @@ const db = require('./db/pool');
 const migrate = require('./db/migrate');
 const webhookRoutes = require('./routes/webhook.routes');
 const authRoutes = require('./routes/auth.routes');
+const checkoutRoutes = require('./routes/checkout.routes');
+const vaultRoutes = require('./routes/vault.routes');
 
 // -----------------------------------------------------------
 // Opprett Express-app
@@ -43,8 +53,26 @@ const app = express();
 // -----------------------------------------------------------
 // Middleware
 // -----------------------------------------------------------
-// Parse JSON request bodies
+
+// KRITISK (Fase 5): Stripe webhook-ruten MÅ bruke express.raw()
+// for at signaturverifisering skal fungere. Dette MÅ defineres
+// FØR express.json() globalt, ellers ødelegges body-bufferen.
+app.use('/webhook/payment', express.raw({ type: 'application/json' }));
+
+// Parse JSON request bodies (alle andre ruter)
 app.use(express.json());
+
+// CORS (Fase 6): Frontend-portalen kjører på en annen port/domene.
+// Tillat cross-origin requests fra den konfigurerte frontend-URL-en.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', FRONTEND_URL);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // Session middleware (Fase 3) — kreves for OAuth CSRF-beskyttelse.
 // Sesjonen lagrer state-parameter og userId under OAuth-flyten.
@@ -94,11 +122,18 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// Webhook-ruter (Fase 2)
+// Webhook-ruter (Fase 2 + 5: Stripe SDK)
 app.use('/webhook', webhookRoutes);
 
 // OAuth / Magic Connect-ruter (Fase 3)
 app.use('/auth', authRoutes);
+
+// Checkout / Betaling-ruter (Fase 5)
+app.use('/api', checkoutRoutes);
+
+// Vault API-ruter (Fase 7: NanoClaw Data Plane)
+// Internt API for NanoClaw-containere til å hente dekrypterte tokens
+app.use('/vault', vaultRoutes);
 
 // -----------------------------------------------------------
 // 404 handler
@@ -140,19 +175,26 @@ async function start() {
     app.listen(PORT, HOST, () => {
       console.log('');
       console.log('============================================================');
-      console.log(' Claw Personal — Orkestrator (v0.2.0)');
+      console.log(' Claw Personal — Orkestrator (v0.4.0 — Fase 7)');
       console.log('============================================================');
       console.log(` Server kjører på http://${HOST}:${PORT}`);
       console.log(` Helse-sjekk:     http://${HOST}:${PORT}/health`);
       console.log(` Database:        ✅ PostgreSQL tilkoblet`);
       console.log('');
-      console.log(' Fase 2 — Webhooks:');
+      console.log(' Fase 2/5 — Webhooks (Stripe):');
       console.log(`   POST http://${HOST}:${PORT}/webhook/payment`);
       console.log('');
       console.log(' Fase 3 — Magic Connect (OAuth):');
       console.log(`   GET  http://${HOST}:${PORT}/auth/google?userId=xxx`);
       console.log(`   GET  http://${HOST}:${PORT}/auth/google/callback`);
       console.log(`   GET  http://${HOST}:${PORT}/auth/status/:userId`);
+      console.log('');
+      console.log(' Fase 5 — Betaling (Stripe Checkout):');
+      console.log(`   POST http://${HOST}:${PORT}/api/create-checkout-session`);
+      console.log('');
+      console.log(' Fase 7 — Vault API (NanoClaw Data Plane):');
+      console.log(`   GET  http://${HOST}:${PORT}/vault/tokens`);
+      console.log(`   POST http://${HOST}:${PORT}/vault/tokens/refresh`);
       console.log('============================================================');
       console.log('');
     });

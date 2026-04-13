@@ -1,0 +1,274 @@
+/* ============================================================
+   Magic Connect — page.module.css (Fase 6)
+   ============================================================ */
+
+.page {
+  position: relative;
+  z-index: var(--z-base);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-xl);
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  padding: var(--space-3xl);
+  background: var(--color-bg-glass);
+  border: var(--glass-border);
+  border-radius: var(--radius-xl);
+  backdrop-filter: var(--glass-backdrop);
+  box-shadow: var(--glass-shadow);
+  animation: scaleIn 0.5s ease-out;
+}
+
+.logo {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+/* --- Stepper --- */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-2xl);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-muted);
+  color: var(--color-text-muted);
+  transition: all var(--transition-base);
+}
+
+.stepActive {
+  border-color: var(--color-accent-purple);
+  color: #fff;
+  background: var(--color-accent-purple);
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.40);
+}
+
+.stepDone {
+  border-color: var(--color-accent-green);
+  color: #fff;
+  background: var(--color-accent-green);
+}
+
+.stepLine {
+  width: 40px;
+  height: 2px;
+  background: var(--color-text-muted);
+  transition: background var(--transition-base);
+}
+
+.stepLineDone {
+  background: var(--color-accent-green);
+}
+
+/* --- Content area --- */
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: var(--space-sm);
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.description {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  margin-bottom: var(--space-2xl);
+  animation: fadeInUp 0.5s ease-out 0.1s both;
+}
+
+/* --- Google Button --- */
+.googleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-card);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  animation: fadeInUp 0.5s ease-out 0.2s both;
+}
+
+.googleButton:hover {
+  background: var(--color-bg-glass-hover);
+  border-color: rgba(255,255,255,0.20);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.30);
+}
+
+.googleButton:active {
+  transform: translateY(0);
+}
+
+.googleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* --- Scopes Info --- */
+.scopes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-lg);
+  border-top: var(--glass-border);
+  animation: fadeInUp 0.5s ease-out 0.3s both;
+}
+
+.scopesTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.scopeItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.scopeIcon {
+  font-size: var(--font-size-base);
+  width: 20px;
+  text-align: center;
+}
+
+.scopeReadonly {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-green);
+  font-weight: 600;
+  padding: 1px 6px;
+  background: rgba(16, 185, 129, 0.10);
+  border-radius: var(--radius-sm);
+}
+
+/* --- Status Checking --- */
+.statusChecking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) 0;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.spinnerLarge {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(124, 58, 237, 0.20);
+  border-top-color: var(--color-accent-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.statusText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* --- Success State --- */
+.successContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) 0;
+  animation: scaleIn 0.5s ease-out;
+}
+
+.successIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  font-size: 2rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 2px solid rgba(16, 185, 129, 0.30);
+  border-radius: 50%;
+}
+
+.successTitle {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-accent-green);
+}
+
+.successMessage {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.statusButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-2xl);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #fff;
+  background: var(--gradient-brand);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-decoration: none;
+}
+
+.statusButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 24px rgba(124, 58, 237, 0.35);
+}
+
+/* --- Responsive --- */
+@media (max-width: 640px) {
+  .card {
+    padding: var(--space-xl);
+  }
+}

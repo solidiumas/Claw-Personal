@@ -83,6 +83,14 @@ services:
       - VAULT_MASTER_KEY=${VAULT_MASTER_KEY}
       # Fase 4: Database
       - DATABASE_URL=${DATABASE_URL}
+      # Fase 5: Stripe Betalingsintegrasjon
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID}
+      - STRIPE_SUCCESS_URL=${STRIPE_SUCCESS_URL}
+      - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL}
+      # Fase 6: Frontend Portal
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
     volumes:
       # Docker socket — gir Orkestratoren tilgang til å styre containere.
       # VIKTIG: Dette gir full Docker-kontroll. Sikres i produksjon.
@@ -120,6 +128,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # -----------------------------------------------------------
+  # Fase 6: Frontend Portal — "The Gateway" (Next.js)
+  # -----------------------------------------------------------
+  # Brukerportalen som håndterer onboarding, betaling og
+  # Magic Connect. Kommuniserer med Orkestratoren via API.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: claw-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3001}:3001"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    networks:
+      - claw-external
+    depends_on:
+      orchestrator:
+        condition: service_started
+
 networks:
   # Lukket internt nettverk — ingen direkte internett-tilgang.
   # NanoClaw-brukercontainere kobles KUN til dette nettverket.
@@ -140,4 +169,17 @@ volumes:
   # Persistent lagring for PostgreSQL-databasen
   postgres_data:
     name: claw-postgres-data
+
+# -----------------------------------------------------------
+# NanoClaw Base Image (Fase 7)
+# -----------------------------------------------------------
+# Brukercontainere bygges fra dette imaget. Orkestratoren
+# spinner dem opp dynamisk via docker.service.js.
+#
+# Bygg manuelt:
+#   docker build -t nanoclaw-base:latest ./nanoclaw
+#
+# Eller via docker compose:
+#   docker compose build nanoclaw-base
+# -----------------------------------------------------------
 

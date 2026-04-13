@@ -54,6 +54,8 @@ class DockerService {
         `OPENAI_API_KEY=${virtualKey}`,
         // LiteLLM proxy base URL (tilgjengelig via claw-internal nettverk)
         `OPENAI_API_BASE=${config.litellm.internalUrl}`,
+        // Orkestrator URL for Vault API (Fase 7)
+        `ORCHESTRATOR_URL=http://claw-orchestrator:3000`,
         // Standard modell
         `MODEL_NAME=${config.litellm.defaultModel}`,
         // Bruker-ID for logging og sporing

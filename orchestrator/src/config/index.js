@@ -7,6 +7,7 @@
 // Fase 1: Server, Docker, LiteLLM
 // Fase 3: Google OAuth, Vault (Zero-Knowledge), Session
 // Fase 4: Database (PostgreSQL)
+// Fase 5: Stripe Betalingsintegrasjon
 // ============================================================
 
 const crypto = require('crypto');
@@ -113,6 +114,21 @@ const config = {
     maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS, 10) || 20,
     idleTimeoutMs: parseInt(process.env.DB_IDLE_TIMEOUT_MS, 10) || 30000,
     connectionTimeoutMs: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS, 10) || 5000,
+  },
+
+  // -----------------------------------------------------------
+  // Stripe — Betalingsintegrasjon (Fase 5)
+  // -----------------------------------------------------------
+  // secretKey:      Fra Stripe Dashboard → Developers → API Keys
+  // webhookSecret:  Fra Stripe Dashboard → Webhooks → Signing secret
+  // priceId:        ID-en til abonnementsproduktet i Stripe
+  // -----------------------------------------------------------
+  stripe: {
+    secretKey:        process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret:    process.env.STRIPE_WEBHOOK_SECRET || '',
+    priceId:          process.env.STRIPE_PRICE_ID || '',
+    successUrl:       process.env.STRIPE_SUCCESS_URL || 'http://localhost:3001/magic-connect',
+    cancelUrl:        process.env.STRIPE_CANCEL_URL || 'http://localhost:3001/',
   },
 };
 

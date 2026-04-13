@@ -1,0 +1,220 @@
+/* ============================================================
+   Claw Personal — Design System (Fase 6: Frontend Portal)
+   ============================================================
+   Premium dark-mode design med glassmorphism og gradients.
+   Alle farger, spacing, animasjoner og typografi defineres her.
+   ============================================================ */
+
+/* --- Google Font: Inter --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* --- CSS Custom Properties (Design Tokens) --- */
+:root {
+  /* Fargepalett — Premium mørk AI-estetikk */
+  --color-bg-primary:    #0a0a0f;
+  --color-bg-secondary:  #12121a;
+  --color-bg-card:       rgba(255, 255, 255, 0.04);
+  --color-bg-glass:      rgba(255, 255, 255, 0.06);
+  --color-bg-glass-hover: rgba(255, 255, 255, 0.10);
+
+  --color-text-primary:   #f0f0f5;
+  --color-text-secondary: #8888a0;
+  --color-text-muted:     #55556a;
+
+  /* Brand gradient — Lilla → Blå → Cyan */
+  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #06b6d4 100%);
+  --gradient-brand-hover: linear-gradient(135deg, #8b5cf6 0%, #60a5fa 50%, #22d3ee 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(59,130,246,0.10) 50%, rgba(6,182,212,0.05) 100%);
+  --gradient-glow: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.20) 0%, transparent 70%);
+
+  /* Accent-farger */
+  --color-accent-purple:  #7c3aed;
+  --color-accent-blue:    #3b82f6;
+  --color-accent-cyan:    #06b6d4;
+  --color-accent-green:   #10b981;
+  --color-accent-orange:  #f59e0b;
+  --color-accent-red:     #ef4444;
+
+  /* Glassmorphism */
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --glass-backdrop: blur(20px);
+
+  /* Spacing */
+  --space-xs:  0.25rem;
+  --space-sm:  0.5rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  --space-4xl: 6rem;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Typografi */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base:  1rem;
+  --font-size-lg:    1.125rem;
+  --font-size-xl:    1.25rem;
+  --font-size-2xl:   1.5rem;
+  --font-size-3xl:   2rem;
+  --font-size-4xl:   2.5rem;
+  --font-size-5xl:   3.5rem;
+  --font-size-hero:  4.5rem;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-index */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+}
+
+/* --- Reset & Base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent-cyan);
+}
+
+/* --- Utility: Background Glow --- */
+.bg-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60vh;
+  background: var(--gradient-glow);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- Keyframe Animations --- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes checkmark {
+  0%   { stroke-dashoffset: 24; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* --- Scrollbar Styling --- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+/* --- Selection Styling --- */
+::selection {
+  background: rgba(124, 58, 237, 0.40);
+  color: #fff;
+}
