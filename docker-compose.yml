@@ -67,7 +67,7 @@ services:
     ports:
       # Eksponeres for å motta webhooks fra betalingsleverandører.
       # I produksjon: bruk en reverse proxy (nginx/caddy) foran.
-      - "127.0.0.1:${ORCHESTRATOR_PORT:-3000}:3000"
+      - "${ORCHESTRATOR_PORT:-3000}:3000"
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
       - LITELLM_INTERNAL_URL=http://litellm-proxy:4000
@@ -137,10 +137,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     container_name: claw-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3001}:3001"
+      - "${FRONTEND_PORT:-3001}:3001"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
     networks:
