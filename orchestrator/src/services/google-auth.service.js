@@ -62,10 +62,12 @@ class GoogleAuthService {
       // CSRF-beskyttelse: state sendes med og verifiseres i callback
       state,
 
-      // 'consent' tvinger Google til å vise samtykke-skjermen
-      // hver gang, noe som sikrer at vi alltid får refresh_token.
-      // Uten dette sender Google kun refresh_token ved første login.
-      prompt: 'consent',
+      // 'consent select_account' tvinger Google til å først vise
+      // kontovalg-skjermen (velg hvilken Google-konto), og deretter
+      // samtykke-skjermen. Dette sikrer at:
+      //   1. Brukeren alltid kan velge riktig Google-konto
+      //   2. Vi alltid får refresh_token (consent-delen)
+      prompt: 'consent select_account',
 
       // Inkluder granted scopes for å se nøyaktig hva brukeren godkjente
       include_granted_scopes: true,
