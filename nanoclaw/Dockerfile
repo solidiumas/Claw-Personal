@@ -58,4 +58,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=10s \
   CMD python -c "import os; assert os.path.exists('/app/src/main.py')" || exit 1
 
 # Start NanoClaw-agenten
-CMD ["python", "-u", "src/main.py"]
+CMD ["python", "-u", "-m", "src.main"]
