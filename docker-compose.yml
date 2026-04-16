@@ -151,22 +151,6 @@ services:
       orchestrator:
         condition: service_started
 
-networks:
-  # Lukket internt nettverk — ingen direkte internett-tilgang.
-  # NanoClaw-brukercontainere kobles KUN til dette nettverket.
-  # De kan snakke med litellm-proxy:4000, men ikke med internett.
-  claw-internal:
-    name: claw-internal
-    driver: bridge
-    internal: true
-
-  # Eksternt nettverk — gir LiteLLM-proxyen internett-tilgang
-  # slik at den kan videresende forespørsler til Anthropic API.
-  # Brukercontainere skal ALDRI kobles til dette nettverket.
-  claw-external:
-    name: claw-external
-    driver: bridge
-
   # -----------------------------------------------------------
   # NanoClaw Base Image (Fase 7) — Build-only service
   # -----------------------------------------------------------
@@ -190,21 +174,23 @@ networks:
     networks:
       - claw-internal
 
+networks:
+  # Lukket internt nettverk — ingen direkte internett-tilgang.
+  # NanoClaw-brukercontainere kobles KUN til dette nettverket.
+  # De kan snakke med litellm-proxy:4000, men ikke med internett.
+  claw-internal:
+    name: claw-internal
+    driver: bridge
+    internal: true
+
+  # Eksternt nettverk — gir LiteLLM-proxyen internett-tilgang
+  # slik at den kan videresende forespørsler til Anthropic API.
+  # Brukercontainere skal ALDRI kobles til dette nettverket.
+  claw-external:
+    name: claw-external
+    driver: bridge
+
 volumes:
   # Persistent lagring for PostgreSQL-databasen
   postgres_data:
     name: claw-postgres-data
-
-# -----------------------------------------------------------
-# NanoClaw Base Image (Fase 7)
-# -----------------------------------------------------------
-# Brukercontainere bygges fra dette imaget. Orkestratoren
-# spinner dem opp dynamisk via docker.service.js.
-#
-# Bygg manuelt:
-#   docker build -t nanoclaw-base:latest ./nanoclaw
-#
-# Eller via docker compose:
-#   docker compose build nanoclaw-base
-# -----------------------------------------------------------
-
