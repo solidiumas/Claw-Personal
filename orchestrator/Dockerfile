@@ -26,10 +26,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 COPY src/ ./src/
 
-# Kjør som ikke-root bruker for sikkerhet
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -S appuser -u 1001 -G appgroup
-USER appuser
+# Kjører som root for å ha rettigheter til /var/run/docker.sock
+# Dette kreves siden Orkestratoren er ansvarlig for å opprette bruker-containere.
 
 # Eksponer port
 EXPOSE 3000
