@@ -44,12 +44,15 @@ services:
     networks:
       - claw-internal
       - claw-external
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python3", "-c", "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('localhost', 4000))"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
   # -----------------------------------------------------------
   # Fase 2: Orkestrator — Backend for "Zero Delay" onboarding
@@ -92,9 +95,12 @@ services:
       - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL}
       # Fase 6: Frontend Portal
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
+    # Gir containeren tilgang til vertens Docker-daemon.
+    # group_add "0" (root) sikrer at prosessen har rettigheter til
+    # /var/run/docker.sock uansett serveroppsett — permanent fix.
+    group_add:
+      - "0"
     volumes:
-      # Docker socket — gir Orkestratoren tilgang til å styre containere.
-      # VIKTIG: Dette gir full Docker-kontroll. Sikres i produksjon.
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       # Orkestratoren trenger begge nettverk:
