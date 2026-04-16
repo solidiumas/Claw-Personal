@@ -247,3 +247,66 @@
     gap: var(--space-md);
   }
 }
+
+/* --- Onboarding Banner --- */
+.onboardingBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: var(--radius-md);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* --- Success Banner --- */
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.successIcon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.onboardingTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.onboardingSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.connectButton {
+  display: inline-block;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.connectButton:hover {
+  opacity: 0.85;
+}
+

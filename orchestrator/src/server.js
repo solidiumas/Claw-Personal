@@ -136,6 +136,57 @@ app.use('/api', checkoutRoutes);
 app.use('/vault', vaultRoutes);
 
 // -----------------------------------------------------------
+// Container-status polling (Fase 6: Onboarding)
+// -----------------------------------------------------------
+// Frontenden poller dette endepunktet hvert 3. sekund mens
+// brukeren er på onboarding-skjermen, for å vite når
+// NanoClaw-containeren er klar og kunden kan koble til Google.
+//
+// Returnerer:
+//   { status: 'provisioning' }  — Betalt, container spinnes opp
+//   { status: 'running' }       — Container kjører, klar for OAuth
+//   { status: 'not_found' }     — Ukjent bruker-ID
+//   { status: 'error' }         — Noe gikk galt
+// -----------------------------------------------------------
+app.get('/api/container-status/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const result = await db.query(
+      `SELECT license_status, container_id, container_name
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ status: 'not_found' });
+    }
+
+    const { license_status, container_id, container_name } = result.rows[0];
+
+    // Container er registrert i DB — sjekk om den faktisk kjører
+    if (container_name && container_id) {
+      return res.json({
+        status: 'running',
+        containerName: container_name,
+        licenseStatus: license_status,
+      });
+    }
+
+    // Betaling godkjent, men container er ikke klar enda
+    if (license_status === 'active') {
+      return res.json({ status: 'provisioning', licenseStatus: license_status });
+    }
+
+    // Betaling venter (Stripe ikke kalt tilbake enda)
+    return res.json({ status: 'provisioning', licenseStatus: license_status });
+
+  } catch (err) {
+    console.error(`[ContainerStatus] Feil for bruker ${userId}: ${err.message}`);
+    return res.status(500).json({ status: 'error', message: 'Intern feil' });
+  }
+});
+
+// -----------------------------------------------------------
 // 404 handler
 // -----------------------------------------------------------
 app.use((_req, res) => {

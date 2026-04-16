@@ -167,6 +167,29 @@ networks:
     name: claw-external
     driver: bridge
 
+  # -----------------------------------------------------------
+  # NanoClaw Base Image (Fase 7) — Build-only service
+  # -----------------------------------------------------------
+  # Dette er ikke en kjørende tjeneste, men en byggeinstruksjon.
+  # Docker Compose bruker denne til å automatisk bygge og
+  # registrere imaget "nanoclaw-base:latest" lokalt.
+  #
+  # Imaget brukes av Orkestratoren (docker.service.js) for å
+  # dynamisk spinne opp isolerte brukercontainere.
+  #
+  # Bygges automatisk med: docker compose build
+  # Startes ALDRI som en kontinuerlig container (profile: build-only).
+  # -----------------------------------------------------------
+  nanoclaw-base:
+    build:
+      context: ./nanoclaw
+      dockerfile: Dockerfile
+    image: nanoclaw-base:latest
+    profiles:
+      - build-only
+    networks:
+      - claw-internal
+
 volumes:
   # Persistent lagring for PostgreSQL-databasen
   postgres_data:
