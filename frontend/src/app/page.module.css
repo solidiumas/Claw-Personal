@@ -116,8 +116,98 @@
 .ctaGroup {
   display: flex;
   gap: var(--space-md);
+  margin-top: var(--space-lg);
+  animation: fadeInUp 0.7s ease-out 0.35s both;
+}
+
+/* --- YouTube URL-felt (Fase 8) --- */
+.urlWrapper {
+  width: 100%;
+  max-width: 520px;
   margin-top: var(--space-2xl);
-  animation: fadeInUp 0.7s ease-out 0.3s both;
+  animation: fadeInUp 0.7s ease-out 0.25s both;
+}
+
+.urlLabel {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+  text-align: left;
+}
+
+.urlInputRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.urlIcon {
+  position: absolute;
+  left: var(--space-md);
+  font-size: var(--font-size-base);
+  color: var(--color-accent-red);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.urlInput {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg) var(--space-md) calc(var(--space-lg) + 1.5rem);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-glass);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--transition-base);
+  backdrop-filter: var(--glass-backdrop);
+}
+
+.urlInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.urlInput:focus {
+  border-color: rgba(124, 58, 237, 0.50);
+  background: var(--color-bg-glass-hover);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.urlInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.urlInputError {
+  border-color: rgba(239, 68, 68, 0.50) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.10) !important;
+}
+
+.urlError {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-red);
+  text-align: left;
+}
+
+.urlSuccess {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-green);
+  text-align: left;
+}
+
+/* --- Hero note (liten tekst under CTA) --- */
+.heroNote {
+  margin-top: var(--space-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  animation: fadeInUp 0.7s ease-out 0.4s both;
 }
 
 .ctaPrimary {
@@ -256,6 +346,10 @@
 
   .hero {
     padding: var(--space-4xl) var(--space-md);
+  }
+
+  .urlWrapper {
+    max-width: 100%;
   }
 
   .ctaGroup {

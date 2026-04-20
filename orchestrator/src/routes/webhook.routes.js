@@ -132,16 +132,23 @@ async function handleStripeEvent(event) {
       console.log(`[Webhook]   Stripe Customer: ${session.customer}`);
       console.log(`[Webhook]   Stripe Subscription: ${session.subscription}`);
 
-      // Oppdater bruker i DB med Stripe-IDer og aktiv status
+      // Hent YouTube-handle fra Stripe metadata (Fase 8)
+      const youtubeHandle = session.metadata?.youtubeHandle || null;
+      if (youtubeHandle) {
+        console.log(`[Webhook]   YouTube Handle: ${youtubeHandle}`);
+      }
+
+      // Oppdater bruker i DB med Stripe-IDer, aktiv status, og YouTube-handle
       await db.query(
         `UPDATE users
          SET license_status        = 'active',
              stripe_customer_id     = $2,
-             stripe_subscription_id = $3
+             stripe_subscription_id = $3,
+             youtube_handle         = COALESCE(youtube_handle, $4)
          WHERE id = $1`,
-        [userId, session.customer, session.subscription]
+        [userId, session.customer, session.subscription, youtubeHandle]
       );
-      console.log(`[Webhook]   DB: license_status → active`);
+      console.log(`[Webhook]   DB: license_status → active${youtubeHandle ? `, youtube_handle → ${youtubeHandle}` : ''}`);
 
       // Provisjoner brukeren
       await provisionUser(userId);
