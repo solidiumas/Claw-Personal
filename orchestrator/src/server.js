@@ -226,7 +226,7 @@ async function start() {
     app.listen(PORT, HOST, () => {
       console.log('');
       console.log('============================================================');
-      console.log(' Claw Personal — Orkestrator (v0.4.0 — Fase 7)');
+      console.log(' Claw Personal — Orkestrator (v0.5.0 — Fase 8)');
       console.log('============================================================');
       console.log(` Server kjører på http://${HOST}:${PORT}`);
       console.log(` Helse-sjekk:     http://${HOST}:${PORT}/health`);

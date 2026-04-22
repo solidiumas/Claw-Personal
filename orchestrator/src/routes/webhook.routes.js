@@ -301,6 +301,25 @@ async function handleStripeEvent(event) {
 async function provisionUser(userId) {
   console.log(`[Provision] Starter provisjonering for bruker: ${userId}`);
 
+  // 0. Hent youtube_handle fra databasen (lagret av checkout eller webhook)
+  let youtubeHandle = null;
+  try {
+    const userResult = await db.query(
+      `SELECT youtube_handle FROM users WHERE id = $1`,
+      [userId]
+    );
+    if (userResult.rows.length > 0) {
+      youtubeHandle = userResult.rows[0].youtube_handle || null;
+    }
+    if (youtubeHandle) {
+      console.log(`[Provision]   YouTube Channel: ${youtubeHandle}`);
+    } else {
+      console.warn(`[Provision]   ⚠️  Ingen youtube_handle funnet for bruker ${userId}`);
+    }
+  } catch (err) {
+    console.warn(`[Provision]   ⚠️  Kunne ikke hente youtube_handle: ${err.message}`);
+  }
+
   // 1. Generer intern token og lagre i databasen
   const internalToken = await tokenService.createAndStoreToken(userId);
   console.log(`[Provision]   Intern token generert`);
@@ -318,13 +337,17 @@ async function provisionUser(userId) {
     console.warn(`[Provision]   ⚠️  Bruker intern token som fallback`);
   }
 
-  // 3. Spawn NanoClaw Docker-container
+  // 3. Spawn NanoClaw Docker-container (Fase 8: injiser YOUTUBE_CHANNEL)
   const containerInfo = await dockerService.spawnUserContainer(
     userId,
     internalToken,
-    virtualKey
+    virtualKey,
+    youtubeHandle  // → YOUTUBE_CHANNEL env-var i containeren
   );
   console.log(`[Provision]   Container: ${containerInfo.containerName} (${containerInfo.status})`);
+  if (youtubeHandle) {
+    console.log(`[Provision]   YOUTUBE_CHANNEL injisert: ${youtubeHandle}`);
+  }
 
   // 4. Lagre container-info tilbake til brukeren i DB
   await db.query(

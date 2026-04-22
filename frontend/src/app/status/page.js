@@ -271,28 +271,29 @@ function StatusInner() {
               </div>
             )}
 
-            {/* Suksess-banner: vises når container er klar */}
+            {/* Suksess-banner: vises når container er klar (Fase 8: Google er valgfritt) */}
             {containerStatus === 'running' && !googleConnected && (
               <div className={styles.successBanner}>
                 <span className={styles.successIcon}>🚀</span>
                 <div>
-                  <p className={styles.onboardingTitle}>AI-agenten er klar!</p>
+                  <p className={styles.onboardingTitle}>AI-agenten er i gang!</p>
                   <p className={styles.onboardingSubtitle}>
-                    Koble til Google for å starte analysen.
+                    NanoClaw analyserer nå YouTube-kanalen din.
+                    Du kan koble til Google for dypere integrasjon fra dashbordet.
                   </p>
                 </div>
                 {userId && (
                   <a
-                    href={`${API_URL}/auth/google?userId=${userId}`}
+                    href={`/dashboard?userId=${userId}`}
                     className={styles.connectButton}
                   >
-                    Koble til Google →
+                    Gå til dashboard →
                   </a>
                 )}
               </div>
             )}
 
-            {/* Alt klart */}
+            {/* Alt klart: container kjører og Google er tilkoblet */}
             {containerStatus === 'running' && googleConnected && (
               <div className={styles.successBanner}>
                 <span className={styles.successIcon}>✅</span>

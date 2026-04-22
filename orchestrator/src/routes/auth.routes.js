@@ -226,13 +226,14 @@ router.get('/google/callback', async (req, res) => {
     console.log(`${'='.repeat(60)}\n`);
 
     // -----------------------------------------------------------
-    // 7. Redirect til frontend (Fase 6)
-    //    Brukeren sendes tilbake til Magic Connect-siden med
-    //    userId og oauth=done som query-parametere, slik at
-    //    frontenden kan starte status-polling.
+    // 7. Redirect til frontend (Fase 8 — Task 4)
+    //    Brukeren var inne i dashbordet og valgte å koble til Google
+    //    som et valgfritt premium-tillegg. Etter fullført OAuth
+    //    sendes de tilbake til dashbordet med oauth=done, slik at
+    //    dashbordet kan oppdatere Google-tilkoblingskortet.
     // -----------------------------------------------------------
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    return res.redirect(`${frontendUrl}/magic-connect?userId=${userId}&oauth=done`);
+    return res.redirect(`${frontendUrl}/dashboard?userId=${userId}&oauth=done`);
 
   } catch (err) {
     console.error(`[Auth] Feil i OAuth callback: ${err.message}`);
