@@ -13,6 +13,13 @@
 const Stripe = require('stripe');
 const config = require('../config');
 
+class StripeConfigError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'StripeConfigError';
+  }
+}
+
 class StripeService {
   constructor() {
     if (!config.stripe.secretKey) {
@@ -40,6 +47,7 @@ class StripeService {
    * @returns {Promise<object>}       — { sessionId, url }
    */
   async createCheckoutSession({ userId, email }) {
+    this._validateCheckoutConfig();
     const session = await this._stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -101,6 +109,29 @@ class StripeService {
   async getSubscription(subscriptionId) {
     return this._stripe.subscriptions.retrieve(subscriptionId);
   }
+
+  _validateCheckoutConfig() {
+    if (!config.stripe.secretKey || !config.stripe.secretKey.trim()) {
+      throw new StripeConfigError('STRIPE_SECRET_KEY mangler i serverkonfigurasjon.');
+    }
+    if (!config.stripe.secretKey.startsWith('sk_')) {
+      throw new StripeConfigError('STRIPE_SECRET_KEY ser ugyldig ut (må starte med sk_).');
+    }
+    if (config.stripe.secretKey.includes('XXXXXXXXXXXXXXXX')) {
+      throw new StripeConfigError('STRIPE_SECRET_KEY er ikke satt til en ekte Stripe Secret Key.');
+    }
+    if (!config.stripe.priceId || !config.stripe.priceId.trim()) {
+      throw new StripeConfigError('STRIPE_PRICE_ID mangler i serverkonfigurasjon.');
+    }
+    if (!config.stripe.priceId.startsWith('price_')) {
+      throw new StripeConfigError('STRIPE_PRICE_ID ser ugyldig ut (må starte med price_).');
+    }
+    if (config.stripe.priceId.includes('XXXXXXXX')) {
+      throw new StripeConfigError('STRIPE_PRICE_ID er ikke satt til en ekte Stripe Price ID.');
+    }
+  }
 }
 
-module.exports = new StripeService();
+const stripeService = new StripeService();
+module.exports = stripeService;
+module.exports.StripeConfigError = StripeConfigError;

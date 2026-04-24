@@ -6,6 +6,8 @@
 .env
 .env.local
 .env.production
+.env.*
+!.env.example
 
 # OS-filer
 .DS_Store

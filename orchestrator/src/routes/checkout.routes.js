@@ -24,8 +24,13 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db/pool');
 const stripeService = require('../services/stripe.service');
+const { StripeConfigError } = require('../services/stripe.service');
 
 const router = express.Router();
+
+function isStripeRuntimeError(err) {
+  return Boolean(err && typeof err.type === 'string' && err.type.startsWith('Stripe'));
+}
 
 /**
  * POST /api/create-checkout-session
@@ -44,6 +49,7 @@ const router = express.Router();
  *   }
  */
 router.post('/create-checkout-session', async (req, res) => {
+  let userId;
   try {
     const { email } = req.body;
 
@@ -53,7 +59,7 @@ router.post('/create-checkout-session', async (req, res) => {
     //    Dette IDet sendes som client_reference_id til Stripe og
     //    brukes til å koble checkout.session.completed til riktig rad.
     // -----------------------------------------------------------
-    const userId = uuidv4();
+    userId = uuidv4();
 
     await db.query(
       `INSERT INTO users (id, email, license_status)
@@ -82,6 +88,30 @@ router.post('/create-checkout-session', async (req, res) => {
     });
 
   } catch (err) {
+    if (userId) {
+      try {
+        await db.query('DELETE FROM users WHERE id = $1 AND license_status = $2', [userId, 'pending']);
+      } catch (cleanupErr) {
+        console.error(`[Checkout] Feil ved opprydding av bruker ${userId}: ${cleanupErr.message}`);
+      }
+    }
+
+    if (err instanceof StripeConfigError) {
+      console.error(`[Checkout] Ugyldig Stripe-konfig: ${err.message}`);
+      return res.status(503).json({
+        success: false,
+        error: 'Betaling er midlertidig utilgjengelig. Stripe-oppsett mangler eller er ugyldig.',
+      });
+    }
+
+    if (isStripeRuntimeError(err)) {
+      console.error(`[Checkout] Stripe-feil (${err.type}${err.code ? `/${err.code}` : ''}): ${err.message}`);
+      return res.status(503).json({
+        success: false,
+        error: 'Betaling er midlertidig utilgjengelig. Stripe avviste forespørselen.',
+      });
+    }
+
     console.error(`[Checkout] Feil ved opprettelse av Checkout Session: ${err.message}`);
     return res.status(500).json({
       success: false,
