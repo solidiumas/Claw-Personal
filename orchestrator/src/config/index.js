@@ -127,7 +127,7 @@ const config = {
     secretKey:        process.env.STRIPE_SECRET_KEY || '',
     webhookSecret:    process.env.STRIPE_WEBHOOK_SECRET || '',
     priceId:          process.env.STRIPE_PRICE_ID || '',
-    successUrl:       process.env.STRIPE_SUCCESS_URL || 'http://localhost:3001/magic-connect',
+    successUrl:       process.env.STRIPE_SUCCESS_URL || 'http://localhost:3001/dashboard',
     cancelUrl:        process.env.STRIPE_CANCEL_URL || 'http://localhost:3001/',
   },
 };

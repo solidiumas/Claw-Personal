@@ -35,11 +35,12 @@ class StripeService {
    * checkout.session.completed eventet til riktig bruker i DB.
    *
    * @param {object} options
-   * @param {string} options.userId   — Intern bruker-ID (UUID)
-   * @param {string} options.email    — Brukerens e-postadresse (forhåndsutfyll)
-   * @returns {Promise<object>}       — { sessionId, url }
+   * @param {string} options.userId         — Intern bruker-ID (UUID)
+   * @param {string} options.email          — Brukerens e-postadresse (forhåndsutfyll)
+   * @param {string} options.youtubeHandle  — Normalisert YouTube-handle (Fase 8)
+   * @returns {Promise<object>}             — { sessionId, url }
    */
-  async createCheckoutSession({ userId, email }) {
+  async createCheckoutSession({ userId, email, youtubeHandle }) {
     const session = await this._stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -54,11 +55,14 @@ class StripeService {
       // Forhåndsutfyll e-post om vi har den
       customer_email: email || undefined,
       // Redirect-URLer etter betaling
-      success_url: `${config.stripe.successUrl}?userId=${userId}`,
+      // Fase 8: Sender brukeren til /dashboard (ikke /magic-connect)
+      // Google Auth er nå valgfritt og initieres fra dashbordet.
+      success_url: `${config.stripe.successUrl}?userId=${userId}&handle=${encodeURIComponent(youtubeHandle || '')}`,
       cancel_url: config.stripe.cancelUrl,
-      // Metadata for sporing
+      // Metadata for sporing og webhook-behandling (Fase 8)
       metadata: {
         userId,
+        youtubeHandle: youtubeHandle || '',
         source: 'claw-orchestrator',
       },
     });

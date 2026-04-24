@@ -29,10 +29,11 @@ class DockerService {
    * @param {string} userId        - Unik brukeridentifikator
    * @param {string} internalToken - Generert intern token for autentisering
    * @param {string} virtualKey    - LiteLLM Virtual Key for LLM-tilgang
+   * @param {string} [youtubeHandle] - YouTube-handle (f.eks. '@Janovich') (Fase 8)
    * @returns {Promise<object>}    - Container-info { containerId, containerName, status }
    * @throws {Error} Hvis containeren ikke kan opprettes
    */
-  async spawnUserContainer(userId, internalToken, virtualKey) {
+  async spawnUserContainer(userId, internalToken, virtualKey, youtubeHandle = null) {
     const containerName = `claw-user-${userId}`;
 
     // Sjekk om containeren allerede eksisterer og fjern den
@@ -60,6 +61,9 @@ class DockerService {
         `MODEL_NAME=${config.litellm.defaultModel}`,
         // Bruker-ID for logging og sporing
         `USER_ID=${userId}`,
+        // Fase 8: YouTube-kanal for NanoClaw-agenten
+        // Injiseres alltid — tom streng om handle ikke er satt
+        `YOUTUBE_CHANNEL=${youtubeHandle || ''}`,
       ],
       HostConfig: {
         // Ressursbegrensninger

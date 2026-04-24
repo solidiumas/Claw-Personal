@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Fase 5: Stripe-kobling
   stripe_customer_id       VARCHAR(64),
   stripe_subscription_id   VARCHAR(64),
+  -- Fase 8: YouTube-kanal (primært datapunkt, samles inn før betaling)
+  youtube_handle           VARCHAR(255),  -- f.eks. '@Janovich'
+  channel_url              TEXT,          -- opprinnelig URL brukeren lim inn
   -- Container-info
   container_id             VARCHAR(128),
   container_name           VARCHAR(128),
@@ -54,6 +57,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_subscription ON users (stripe
 -- Legg til Stripe-kolonner om de mangler (for eksisterende databaser)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id     VARCHAR(64);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(64);
+
+-- Fase 8: Legg til YouTube-kolonner om de mangler (for eksisterende databaser)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube_handle VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_url    TEXT;
 
 -- -----------------------------------------------------------
 -- 2. Krypterte OAuth-tokens (The Vault)
